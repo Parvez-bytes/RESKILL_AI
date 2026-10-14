@@ -2,6 +2,10 @@
 ReSkillAI - Career Intelligence Platform Backend
 Main FastAPI Application Entrypoint
 """
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
 
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,13 +72,47 @@ api_router.include_router(coach.router)
 # Mount /api
 app.include_router(api_router)
 
+# Serve the React frontend from the project root's dist folder
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "dist"
+INDEX_FILE = FRONTEND_DIR / "index.html"
 
-@app.get("/")
-def root():
+
+@app.get("/", include_in_schema=False)
+def serve_frontend():
+    if INDEX_FILE.exists():
+        return FileResponse(INDEX_FILE)
+
     return {
         "service": "ReSkillAI Backend",
         "version": "1.0.0",
         "status": "operational",
+        "message": "Frontend build not found. Run npm run build.",
         "docs_url": "/docs",
         "api_prefix": "/api",
     }
+
+
+# Serve built frontend assets (JS, CSS, images)
+if FRONTEND_DIR.exists():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIR / "assets"),
+        name="frontend-assets",
+    )
+
+
+# Support React client-side routes
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_frontend_routes(full_path: str):
+    if full_path.startswith("api/") or full_path in {"docs", "openapi.json", "redoc"}:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    requested_file = FRONTEND_DIR / full_path
+
+    if requested_file.is_file():
+        return FileResponse(requested_file)
+
+    if INDEX_FILE.exists():
+        return FileResponse(INDEX_FILE)
+
+    raise HTTPException(status_code=404, detail="Frontend build not found")
