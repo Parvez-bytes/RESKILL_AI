@@ -57,7 +57,7 @@ export function resolveApiBaseUrl(): string {
     // On physical mobile devices, set VITE_API_BASE_URL to host LAN IP (e.g. http://192.168.x.x:8000/api)
     return 'http://10.0.2.2:8000/api';
   }
-  return 'http://localhost:8000/api';
+  return "/api";
 }
 
 export const API_BASE = resolveApiBaseUrl();
